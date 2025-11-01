@@ -124,7 +124,7 @@ ssize_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz, const char *
 
 // ------------------- Wrappers -------------------
 
-int odrv_r(odrv_ascii_t *cli, char *out, size_t out_sz, const char *property)
+int odrv_read_property(odrv_ascii_t *cli, char *out, size_t out_sz, const char *property)
 {
     if (!property)
         return -1;
@@ -132,7 +132,7 @@ int odrv_r(odrv_ascii_t *cli, char *out, size_t out_sz, const char *property)
     return (n < 0) ? (int)n : 0;
 }
 
-int odrv_w(odrv_ascii_t *cli, char *out, size_t out_sz, const char *property, const char *value)
+int odrv_write_property(odrv_ascii_t *cli, char *out, size_t out_sz, const char *property, const char *value)
 {
     if (!property || !value)
         return -1;
@@ -140,7 +140,7 @@ int odrv_w(odrv_ascii_t *cli, char *out, size_t out_sz, const char *property, co
     return (n < 0) ? (int)n : 0;
 }
 
-int odrv_q_pos(odrv_ascii_t *cli, int motor, double position, double vel_lim, double torque_lim)
+int odrv_set_position(odrv_ascii_t *cli, int motor, double position, double vel_lim, double torque_lim)
 {
     // q m pos [vel_lim] [torque_lim]
     if (vel_lim == 0.0 && torque_lim == 0.0)
@@ -157,7 +157,7 @@ int odrv_q_pos(odrv_ascii_t *cli, int motor, double position, double vel_lim, do
     }
 }
 
-int odrv_p_pos_ff(odrv_ascii_t *cli, int motor, double position, double vel_ff, double torque_ff)
+int odrv_set_position_ff(odrv_ascii_t *cli, int motor, double position, double vel_ff, double torque_ff)
 {
     // p m pos [vel_ff] [torque_ff]
     if (vel_ff == 0.0 && torque_ff == 0.0)
@@ -168,7 +168,7 @@ int odrv_p_pos_ff(odrv_ascii_t *cli, int motor, double position, double vel_ff, 
         return (odrv_ascii_cmd(cli, NULL, 0, "p %d %.9g %.9g %.9g", motor, position, vel_ff, torque_ff) < 0) ? -1 : 0;
 }
 
-int odrv_v(odrv_ascii_t *cli, int motor, double velocity, double torque_ff)
+int odrv_set_velocity(odrv_ascii_t *cli, int motor, double velocity, double torque_ff)
 {
     // v m vel [tff]
     if (torque_ff == 0.0)
@@ -177,7 +177,7 @@ int odrv_v(odrv_ascii_t *cli, int motor, double velocity, double torque_ff)
         return (odrv_ascii_cmd(cli, NULL, 0, "v %d %.9g %.9g", motor, velocity, torque_ff) < 0) ? -1 : 0;
 }
 
-int odrv_c_torque(odrv_ascii_t *cli, int motor, double torque)
+int odrv_set_torque(odrv_ascii_t *cli, int motor, double torque)
 {
     return (odrv_ascii_cmd(cli, NULL, 0, "c %d %.9g", motor, torque) < 0) ? -1 : 0;
 }
@@ -198,7 +198,7 @@ static int parse_two_doubles(const char *s, double *a, double *b)
     return -2;
 }
 
-int odrv_f(odrv_ascii_t *cli, int motor, double *pos_out, double *vel_out)
+int odrv_get_position_and_velocity(odrv_ascii_t *cli, int motor, double *pos_out, double *vel_out)
 {
     char buf[96];
     ssize_t n = odrv_ascii_cmd(cli, buf, sizeof(buf), "f %d", motor);
@@ -207,17 +207,17 @@ int odrv_f(odrv_ascii_t *cli, int motor, double *pos_out, double *vel_out)
     return parse_two_doubles(buf, pos_out, vel_out);
 }
 
-int odrv_u_watchdog(odrv_ascii_t *cli, int motor)
+int odrv_update_watchdog(odrv_ascii_t *cli, int motor)
 {
     return (odrv_ascii_cmd(cli, NULL, 0, "u %d", motor) < 0) ? -1 : 0;
 }
 
-int odrv_es_set_abs(odrv_ascii_t *cli, int motor, double abs_pos)
+int odrv_encoder_set_abs(odrv_ascii_t *cli, int motor, double abs_pos)
 {
     return (odrv_ascii_cmd(cli, NULL, 0, "es %d %.9g", motor, abs_pos) < 0) ? -1 : 0;
 }
 
-int odrv_ss_save(odrv_ascii_t *cli) { return (odrv_ascii_cmd(cli, NULL, 0, "ss") < 0) ? -1 : 0; }
-int odrv_se_erase(odrv_ascii_t *cli) { return (odrv_ascii_cmd(cli, NULL, 0, "se") < 0) ? -1 : 0; }
-int odrv_sr_reboot(odrv_ascii_t *cli) { return (odrv_ascii_cmd(cli, NULL, 0, "sr") < 0) ? -1 : 0; }
-int odrv_sc_clear_errors(odrv_ascii_t *cli) { return (odrv_ascii_cmd(cli, NULL, 0, "sc") < 0) ? -1 : 0; }
+int odrv_save(odrv_ascii_t *cli) { return (odrv_ascii_cmd(cli, NULL, 0, "ss") < 0) ? -1 : 0; }
+int odrv_erase(odrv_ascii_t *cli) { return (odrv_ascii_cmd(cli, NULL, 0, "se") < 0) ? -1 : 0; }
+int odrv_reboot(odrv_ascii_t *cli) { return (odrv_ascii_cmd(cli, NULL, 0, "sr") < 0) ? -1 : 0; }
+int odrv_clear_errors(odrv_ascii_t *cli) { return (odrv_ascii_cmd(cli, NULL, 0, "sc") < 0) ? -1 : 0; }
