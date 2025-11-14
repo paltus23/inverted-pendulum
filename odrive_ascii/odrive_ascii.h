@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdbool.h>
-
+// #include <stdlib.h>
+size_t *foo(void);
 #ifdef __cplusplus
 extern "C"
 {
@@ -14,8 +15,8 @@ extern "C"
     // Return number of bytes written/read, or negative on error.
     // read_fn must block (up to timeout_ms) until at least one byte is available or timeout.
     // It may return 0 on timeout.
-    typedef ssize_t (*odrv_write_fn)(const uint8_t *buf, size_t len, uint32_t timeout_ms);
-    typedef ssize_t (*odrv_read_fn)(uint8_t *buf, size_t len, uint32_t timeout_ms);
+    typedef size_t (*odrv_write_fn)(const uint8_t *buf, size_t len, uint32_t timeout_ms);
+    typedef size_t (*odrv_read_fn)(uint8_t *buf, size_t len, uint32_t timeout_ms);
 
     typedef struct
     {
@@ -33,7 +34,7 @@ extern "C"
     uint8_t odrv_ascii_checksum_xor(const char *line_without_star); // xor of all chars
     // Send one formatted command (printf-style for the command portion), optionally with checksum,
     // then read a single CRLF-terminated line into out (stripped of CRLF). Returns >=0 length, or <0 on error.
-    ssize_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz, const char *fmt, ...);
+    size_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz, const char *fmt, ...);
 
     // Convenience wrappers --------------------------------------------------------
 

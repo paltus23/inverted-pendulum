@@ -41,7 +41,7 @@ void odrv_ascii_init(odrv_ascii_t *cli, odrv_write_fn w, odrv_read_fn r)
     cli->nl_tx[2] = '\0';
 }
 
-static ssize_t read_line_crlf(odrv_ascii_t *cli, char *out, size_t out_sz)
+static size_t read_line_crlf(odrv_ascii_t *cli, char *out, size_t out_sz)
 {
     // Read until CRLF or buffer full or timeout. Returns len (no CRLF), 0 on timeout, <0 on error.
     if (!out || out_sz == 0)
@@ -50,7 +50,7 @@ static ssize_t read_line_crlf(odrv_ascii_t *cli, char *out, size_t out_sz)
     for (;;)
     {
         uint8_t ch;
-        ssize_t r = cli->read(&ch, 1, cli->io_timeout_ms);
+        size_t r = cli->read(&ch, 1, cli->io_timeout_ms);
         if (r < 0)
             return r;
         if (r == 0)
@@ -72,12 +72,12 @@ static ssize_t read_line_crlf(odrv_ascii_t *cli, char *out, size_t out_sz)
         {
             // strip CRLF
             out[wr - 2] = '\0';
-            return (ssize_t)(wr - 2);
+            return (size_t)(wr - 2);
         }
     }
 }
 
-ssize_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz, const char *fmt, ...)
+size_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz, const char *fmt, ...)
 {
     char core[256];
     va_list ap;
@@ -106,7 +106,7 @@ ssize_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz, const char *
         return -1;
 
     // Send
-    ssize_t w = cli->write((const uint8_t *)tx, (size_t)nfull, cli->io_timeout_ms);
+    size_t w = cli->write((const uint8_t *)tx, (size_t)nfull, cli->io_timeout_ms);
     if (w < 0)
         return w;
 
@@ -114,7 +114,7 @@ ssize_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz, const char *
     // We'll try to read one line; if timeout occurs, treat as no-response, not an error.
     if (!out || out_sz == 0)
         return 0;
-    ssize_t nr = read_line_crlf(cli, out, out_sz);
+    size_t nr = read_line_crlf(cli, out, out_sz);
     if (nr == 0)
         return 0; // no reply (valid for many setpoint/system cmds)
     if (nr < 0)
@@ -128,7 +128,7 @@ int odrv_read_property(odrv_ascii_t *cli, char *out, size_t out_sz, const char *
 {
     if (!property)
         return -1;
-    ssize_t n = odrv_ascii_cmd(cli, out, out_sz, "r %s", property);
+    size_t n = odrv_ascii_cmd(cli, out, out_sz, "r %s", property);
     return (n < 0) ? (int)n : 0;
 }
 
@@ -136,7 +136,7 @@ int odrv_write_property(odrv_ascii_t *cli, char *out, size_t out_sz, const char 
 {
     if (!property || !value)
         return -1;
-    ssize_t n = odrv_ascii_cmd(cli, out, out_sz, "w %s %s", property, value);
+    size_t n = odrv_ascii_cmd(cli, out, out_sz, "w %s %s", property, value);
     return (n < 0) ? (int)n : 0;
 }
 
@@ -201,7 +201,7 @@ static int parse_two_doubles(const char *s, double *a, double *b)
 int odrv_get_position_and_velocity(odrv_ascii_t *cli, int motor, double *pos_out, double *vel_out)
 {
     char buf[96];
-    ssize_t n = odrv_ascii_cmd(cli, buf, sizeof(buf), "f %d", motor);
+    size_t n = odrv_ascii_cmd(cli, buf, sizeof(buf), "f %d", motor);
     if (n <= 0)
         return -1; // feedback must reply "pos vel"
     return parse_two_doubles(buf, pos_out, vel_out);
