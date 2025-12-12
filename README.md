@@ -66,6 +66,6 @@ Before launch QEMU you should launch `export.sh` in terminal of your installed e
 `
 
 `
-qemu-system-xtensa -nographic -machine esp32 -drive file=firmwaqre.bin,if=mtd,format=raw
+qemu-system-xtensa -s -S -nographic -machine esp32 -drive file=firmware.bin,if=mtd,format=raw
 `
 

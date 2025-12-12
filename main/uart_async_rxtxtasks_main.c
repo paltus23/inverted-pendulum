@@ -6,20 +6,30 @@
    software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
    CONDITIONS OF ANY KIND, either express or implied.
 */
+#include "driver/gpio.h"
+#include "driver/uart.h"
+#include "esp_log.h"
+#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_system.h"
-#include "esp_log.h"
-#include "driver/uart.h"
 #include "string.h"
-#include "driver/gpio.h"
 
 #include "odrive_ascii.h"
 
 static const int RX_BUF_SIZE = 1024;
-
+odrv_ascii_t odrv;
 #define TXD_PIN (GPIO_NUM_4)
 #define RXD_PIN (GPIO_NUM_5)
+
+int odrive_uart_write_bytes(uint8_t data, size_t size)
+{
+    return uart_write_bytes(UART_NUM_1, data, size);
+}
+
+int odrive_uart_read_bytes(uint8_t data, size_t size, uint32_t timeout)
+{
+    return uart_read_bytes(UART_NUM_1, data, size, pdMS_TO_TICKS(timeout));
+}
 
 void init(void)
 {
@@ -35,10 +45,10 @@ void init(void)
     // We won't use a buffer for sending data.
     uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
     uart_param_config(UART_NUM_1, &uart_config);
-    uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE,
+                 UART_PIN_NO_CHANGE);
 
-    odrv_ascii_t odrv;
-    odrv_ascii_init(&odrv, NULL, NULL);
+    odrv_ascii_init(&odrv, odrive_uart_write_bytes, odrive_uart_read_bytes);
 }
 
 int sendData(const char *logName, const char *data)
@@ -67,7 +77,8 @@ static void rx_task(void *arg)
     uint8_t *data = (uint8_t *)malloc(RX_BUF_SIZE + 1);
     while (1)
     {
-        const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 1000 / portTICK_PERIOD_MS);
+        const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE,
+                                            1000 / portTICK_PERIOD_MS);
         if (rxBytes > 0)
         {
             data[rxBytes] = 0;
@@ -81,6 +92,8 @@ static void rx_task(void *arg)
 void app_main(void)
 {
     init();
-    xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, NULL, configMAX_PRIORITIES - 1, NULL);
-    xTaskCreate(tx_task, "uart_tx_task", 1024 * 2, NULL, configMAX_PRIORITIES - 2, NULL);
+    xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, NULL, configMAX_PRIORITIES - 1,
+                NULL);
+    xTaskCreate(tx_task, "uart_tx_task", 1024 * 2, NULL, configMAX_PRIORITIES - 2,
+                NULL);
 }
