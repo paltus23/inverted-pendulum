@@ -25,7 +25,6 @@ extern "C"
         uint32_t io_timeout_ms;
         bool use_checksum; // if true, append *CS and expect checksum in reply (per
                            // spec)
-        char nl_tx[3];     // newline to send, defaults to "\r\n"
     } odrv_ascii_t;
 
     // Minimal init; if nl_tx is empty, it will default to "\r\n"

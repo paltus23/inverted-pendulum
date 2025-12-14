@@ -39,9 +39,6 @@ void odrv_ascii_init(odrv_ascii_t *cli, odrv_write_fn w, odrv_read_fn r)
     cli->read = r;
     cli->io_timeout_ms = 200; // tweak as needed
     cli->use_checksum = false;
-    cli->nl_tx[0] = '\r';
-    cli->nl_tx[1] = '\0';
-    cli->nl_tx[2] = '\0';
 }
 
 static size_t read_line_crlf(odrv_ascii_t *cli, char *out, size_t out_sz)
@@ -107,8 +104,7 @@ size_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz,
 
     // Append newline (ODrive accepts \r, \n, \r\n, or '!')
     char tx[384];
-    int nfull = snprintf(tx, sizeof(tx), "%s%s", line,
-                         cli->nl_tx[0] ? cli->nl_tx : "\r\n");
+    int nfull = snprintf(tx, sizeof(tx), "%s\r", line);
     if (nfull < 0 || (size_t)nfull >= sizeof(tx))
         return -1;
 
