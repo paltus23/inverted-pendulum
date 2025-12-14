@@ -16,19 +16,21 @@
 
 #include "odrive_ascii.h"
 
+static const char *TAG = "main";
+
 static const int RX_BUF_SIZE = 1024;
 odrv_ascii_t odrv;
-#define TXD_PIN (GPIO_NUM_4)
-#define RXD_PIN (GPIO_NUM_5)
+#define TXD_PIN (GPIO_NUM_14)
+#define RXD_PIN (GPIO_NUM_12)
 
-int odrive_uart_write_bytes(uint8_t data, size_t size)
+static size_t odrive_uart_write_bytes(const uint8_t *buf, size_t len)
 {
-    return uart_write_bytes(UART_NUM_1, data, size);
+    return uart_write_bytes(UART_NUM_1, buf, len);
 }
 
-int odrive_uart_read_bytes(uint8_t data, size_t size, uint32_t timeout)
+static size_t odrive_uart_read_bytes(uint8_t *buf, size_t len, uint32_t timeout_ms)
 {
-    return uart_read_bytes(UART_NUM_1, data, size, pdMS_TO_TICKS(timeout));
+    return uart_read_bytes(UART_NUM_1, buf, len, pdMS_TO_TICKS(timeout_ms));
 }
 
 void init(void)
@@ -59,41 +61,24 @@ int sendData(const char *logName, const char *data)
     return txBytes;
 }
 
-static void tx_task(void *arg)
+static void get_ff_task(void *arg)
 {
-    static const char *TX_TASK_TAG = "TX_TASK";
-    esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
     while (1)
     {
-        sendData(TX_TASK_TAG, "Hello world");
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        double pos_out = -1, vel_out = -1;
+        char out_buff[100] = "";
+        odrv_get_position_and_velocity(&odrv, 0, &pos_out, &vel_out);
+        ESP_LOGI(TAG, "pos_out: %5.2f vel_out: %5.2f", pos_out, vel_out);
+        vTaskDelay(pdMS_TO_TICKS(200));
+        odrv_read_property(&odrv, out_buff, sizeof(out_buff), "vbus_voltage");
+        ESP_LOGI(TAG, "vbus_voltage: %s", out_buff);
+        vTaskDelay(pdMS_TO_TICKS(800));
     }
-}
-
-static void rx_task(void *arg)
-{
-    static const char *RX_TASK_TAG = "RX_TASK";
-    esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
-    uint8_t *data = (uint8_t *)malloc(RX_BUF_SIZE + 1);
-    while (1)
-    {
-        const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE,
-                                            1000 / portTICK_PERIOD_MS);
-        if (rxBytes > 0)
-        {
-            data[rxBytes] = 0;
-            ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
-            ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
-        }
-    }
-    free(data);
 }
 
 void app_main(void)
 {
     init();
-    xTaskCreate(rx_task, "uart_rx_task", 1024 * 2, NULL, configMAX_PRIORITIES - 1,
-                NULL);
-    xTaskCreate(tx_task, "uart_tx_task", 1024 * 2, NULL, configMAX_PRIORITIES - 2,
+    xTaskCreate(get_ff_task, "get_ff_task", 1024 * 16, NULL, configMAX_PRIORITIES - 1,
                 NULL);
 }

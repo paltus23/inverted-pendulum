@@ -2,6 +2,9 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include "esp_log.h"
+
+static const char *TAG = "odrv_ascii";
 
 // Internal helpers
 static int append_checksum(char *dst, size_t cap, const char *line_wo_cs)
@@ -34,10 +37,10 @@ void odrv_ascii_init(odrv_ascii_t *cli, odrv_write_fn w, odrv_read_fn r)
     memset(cli, 0, sizeof(*cli));
     cli->write = w;
     cli->read = r;
-    cli->io_timeout_ms = 50; // tweak as needed
+    cli->io_timeout_ms = 200; // tweak as needed
     cli->use_checksum = false;
     cli->nl_tx[0] = '\r';
-    cli->nl_tx[1] = '\n';
+    cli->nl_tx[1] = '\0';
     cli->nl_tx[2] = '\0';
 }
 
@@ -120,6 +123,9 @@ size_t odrv_ascii_cmd(odrv_ascii_t *cli, char *out, size_t out_sz,
     if (!out || out_sz == 0)
         return 0;
     size_t nr = read_line_crlf(cli, out, out_sz);
+
+    ESP_LOGI(TAG, "out: %s", out);
+
     if (nr == 0)
         return 0; // no reply (valid for many setpoint/system cmds)
     if (nr < 0)
