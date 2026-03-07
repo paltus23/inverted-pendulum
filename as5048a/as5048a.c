@@ -95,6 +95,19 @@ int8_t as5048a_get_position(const as5048a_handle_t *as5048a_handle,
     *position = data & 0x3FFF;
     return 0; /* No error occurred. */
   }
+  *position = data;
+  return -1; /* Error occurred. */
+}
+
+int8_t as5048a_get_diag(const as5048a_handle_t *as5048a_handle,
+                        uint16_t *diag)
+{
+  uint16_t data = read_data(as5048a_handle, AS5048A_DIAAGC);
+  if (BIT_READ(data, 14) == 0)
+  {
+    *diag = data;
+    return 0; /* No error occurred. */
+  }
   return -1; /* Error occurred. */
 }
 

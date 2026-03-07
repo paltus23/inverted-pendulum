@@ -60,6 +60,8 @@ extern "C"
 
   uint16_t as5048a_get_error_status(const as5048a_handle_t *as5048a_handle);
 
+  int8_t as5048a_get_diag(const as5048a_handle_t *as5048a_handle, uint16_t *diag);
+
 #ifdef __cplusplus
 }
 #endif
