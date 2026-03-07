@@ -28,7 +28,7 @@ odrv_ascii_t odrv;
 #define RXD_PIN (GPIO_NUM_12)
 
 /// @brief SPI
-#define AS5048A_SPI VSPI_HOST
+#define AS5048A_SPI HSPI_HOST
 
 #define PIN_NUM_MOSI 23 // yellow
 #define PIN_NUM_MISO 19 // orange
@@ -128,20 +128,30 @@ void init_as5048a(void)
 
     gpio_set_level(PIN_NUM_CS, 1);
 
+    // io_conf.intr_type = GPIO_INTR_DISABLE;
+    // io_conf.mode = GPIO_MODE_OUTPUT;
+    // io_conf.pin_bit_mask = (1ULL << PIN_NUM_MOSI);
+    // io_conf.pull_down_en = 0;
+    // io_conf.pull_up_en = 0;
+    // gpio_config(&io_conf);
+
+    // io_conf.mode = GPIO_MODE_DISABLE;
+    // gpio_config(&io_conf);
+
     esp_err_t ret;
 
     spi_bus_config_t buscfg = {
         .miso_io_num = PIN_NUM_MISO,
         .mosi_io_num = PIN_NUM_MOSI,
         .sclk_io_num = PIN_NUM_CLK,
-        .data0_io_num = -1,
-        .data1_io_num = -1,
-        .data2_io_num = -1,
-        .data3_io_num = -1,
-        .data4_io_num = -1,
-        .data5_io_num = -1,
-        .data6_io_num = -1,
-        .data7_io_num = -1,
+        // .data0_io_num = -1,
+        // .data1_io_num = -1,
+        // .data2_io_num = -1,
+        // .data3_io_num = -1,
+        // .data4_io_num = -1,
+        // .data5_io_num = -1,
+        // .data6_io_num = -1,
+        // .data7_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .flags = 0,
@@ -176,11 +186,10 @@ void init_as5048a(void)
     uint16_t position = 0;
     uint16_t diag = 0;
     uint16_t data = 0xBFFF;
-    const uint8_t buf[2] = {0xff, 0xbf};
+    const uint8_t buf[2] = {0xbf, 0xff};
     uint8_t rx_buf[4] = {
         0,
     };
-    const char *str_data = "Hello world from ESP using SPI";
 
     gpio_dump_io_configuration(stdout, (1ULL << PIN_NUM_MISO) | (1ULL << PIN_NUM_MOSI) | (1ULL << PIN_NUM_CLK));
 
@@ -189,14 +198,15 @@ void init_as5048a(void)
         spi_transaction_t trans_desc;
         memset(&trans_desc, 0, sizeof(spi_transaction_t));
 
-        trans_desc.length = 32;          // length in BITS!
-        trans_desc.tx_buffer = str_data; // pointer to data
-        trans_desc.rx_buffer = rx_buf;   // no receive
+        trans_desc.length = 16;        // length in BITS!
+        trans_desc.tx_buffer = buf;    // pointer to data
+        trans_desc.rx_buffer = rx_buf; // no receive
 
         spi_select_func();
         vTaskDelay(1);
         esp_err_t err = spi_device_polling_transmit(spi, &trans_desc);
-        ESP_LOGI(TAG, "%s data:%02x%02x%02x%02x %d", __func__, rx_buf[3], rx_buf[2], rx_buf[1], rx_buf[0], err);
+        ESP_LOGI(TAG, "%s data:%02x%02x %d", __func__, rx_buf[0], rx_buf[1], err);
+        vTaskDelay(1);
         spi_deselect_func();
 
         // uint8_t err = as5048a_get_position(&as5048a_handle, &position);
