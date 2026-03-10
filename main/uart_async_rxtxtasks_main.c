@@ -38,43 +38,51 @@ odrv_ascii_t odrv;
 spi_device_handle_t spi;
 
 as5048a_handle_t as5048a_handle;
-void spi_send_func(uint16_t data);
-uint16_t spi_read_func(void);
-void spi_select_func(void);
-void spi_deselect_func(void);
 
-void spi_send_func(uint16_t data)
+as5048a_err_t spi_send_func(uint8_t *data, uint32_t len)
 {
     spi_transaction_t trans_desc = {
-        .length = 16,       // length in BITS!
-        .tx_buffer = &data, // pointer to data
-        .rx_buffer = NULL   // no receive
+        .length = len * 8, // length in BITS!
+        .tx_buffer = data, // pointer to data
+        .rx_buffer = NULL  // no receive
     };
 
     esp_err_t err = spi_device_polling_transmit(spi, &trans_desc);
-    ESP_LOGI(TAG, "%s %d", __func__, err);
+
+    // ESP_LOGI(TAG, "%s %d", __func__, err);
+
+    ESP_LOGI(TAG, "tx %02X%02X err: %d", data[0], data[1], err);
+    if (err == ESP_OK)
+        return AS5018A_OK;
+    else
+        return AS5018A_ERROR;
 }
-uint16_t spi_read_func(void)
+as5048a_err_t spi_read_func(uint8_t *tx_data, uint8_t *rx_data, uint32_t len)
 {
-    uint8_t data[2] = {0, 0};
-    uint8_t tx_data[2] = {0, 0};
     spi_transaction_t trans_desc = {
-        .length = 16,      // length in BITS!
-        .tx_buffer = NULL, // no transmit
-        .rx_buffer = data  //  pointer to data
+        .length = len * 8,    // length in BITS!
+        .tx_buffer = tx_data, // no transmit
+        .rx_buffer = rx_data  //  pointer to rx_data
     };
 
     esp_err_t err = spi_device_polling_transmit(spi, &trans_desc);
-    ESP_LOGI(TAG, "%s %d", __func__, err);
-    return (data[1] << 8) + data[0];
+    // ESP_LOGI(TAG, "%s %d", __func__, err);
+
+    ESP_LOGI(TAG, "rx %02X%02X err: %d", rx_data[0], rx_data[1], err);
+    if (err == ESP_OK)
+        return AS5018A_OK;
+    else
+        return AS5018A_ERROR;
 }
-void spi_select_func(void)
+as5048a_err_t spi_select_func(void)
 {
     gpio_set_level(PIN_NUM_CS, 0);
+    return AS5018A_OK;
 }
-void spi_deselect_func(void)
+as5048a_err_t spi_deselect_func(void)
 {
     gpio_set_level(PIN_NUM_CS, 1);
+    return AS5018A_OK;
 }
 
 void spi_delay_dummy(void)
@@ -128,30 +136,11 @@ void init_as5048a(void)
 
     gpio_set_level(PIN_NUM_CS, 1);
 
-    // io_conf.intr_type = GPIO_INTR_DISABLE;
-    // io_conf.mode = GPIO_MODE_OUTPUT;
-    // io_conf.pin_bit_mask = (1ULL << PIN_NUM_MOSI);
-    // io_conf.pull_down_en = 0;
-    // io_conf.pull_up_en = 0;
-    // gpio_config(&io_conf);
-
-    // io_conf.mode = GPIO_MODE_DISABLE;
-    // gpio_config(&io_conf);
-
     esp_err_t ret;
-
     spi_bus_config_t buscfg = {
         .miso_io_num = PIN_NUM_MISO,
         .mosi_io_num = PIN_NUM_MOSI,
         .sclk_io_num = PIN_NUM_CLK,
-        // .data0_io_num = -1,
-        // .data1_io_num = -1,
-        // .data2_io_num = -1,
-        // .data3_io_num = -1,
-        // .data4_io_num = -1,
-        // .data5_io_num = -1,
-        // .data6_io_num = -1,
-        // .data7_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .flags = 0,
@@ -161,7 +150,7 @@ void init_as5048a(void)
 
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = 200 * 1000, // Clock out at 10 MHz
-        .mode = 0,                    // SPI mode 0
+        .mode = 1,                    // SPI mode 1
         .spics_io_num = -1,           // CS pin
         .flags = 0,
         .address_bits = 0,
@@ -186,7 +175,7 @@ void init_as5048a(void)
     uint16_t position = 0;
     uint16_t diag = 0;
     uint16_t data = 0xBFFF;
-    const uint8_t buf[2] = {0xbf, 0xff};
+    const uint8_t buf[2] = {0xFf, 0xff};
     uint8_t rx_buf[4] = {
         0,
     };
@@ -195,29 +184,30 @@ void init_as5048a(void)
 
     while (1)
     {
-        spi_transaction_t trans_desc;
-        memset(&trans_desc, 0, sizeof(spi_transaction_t));
+        // spi_transaction_t trans_desc;
+        // memset(&trans_desc, 0, sizeof(spi_transaction_t));
 
-        trans_desc.length = 16;        // length in BITS!
-        trans_desc.tx_buffer = buf;    // pointer to data
-        trans_desc.rx_buffer = rx_buf; // no receive
+        // trans_desc.length = 16;        // length in BITS!
+        // trans_desc.tx_buffer = buf;    // pointer to data
+        // trans_desc.rx_buffer = rx_buf; // no receive
 
-        spi_select_func();
-        vTaskDelay(1);
-        esp_err_t err = spi_device_polling_transmit(spi, &trans_desc);
-        ESP_LOGI(TAG, "%s data:%02x%02x %d", __func__, rx_buf[0], rx_buf[1], err);
-        vTaskDelay(1);
-        spi_deselect_func();
+        // spi_select_func();
+        // vTaskDelay(1);
+        // esp_err_t err = spi_device_polling_transmit(spi, &trans_desc);
+        // uint16_t pos = ((rx_buf[0] & 0x3F) << 8) + rx_buf[1];
+        // ESP_LOGI(TAG, "%s data:%02x%02x pos: %5d %d", __func__, rx_buf[0], rx_buf[1], pos, err);
+        // vTaskDelay(1);
+        // spi_deselect_func();
 
-        // uint8_t err = as5048a_get_position(&as5048a_handle, &position);
-        // ESP_LOGI(TAG, "%s position: %d err: %d", __func__, position, err);
+        as5048a_err_t err = as5048a_get_position(&as5048a_handle, &position);
+        ESP_LOGI(TAG, "%s pos: %5d err: %d", __func__, position, err);
 
         // err = as5048a_get_diag(&as5048a_handle, &diag);
         // ESP_LOGI(TAG, "%s diag: %x err: %d", __func__, diag, err);
 
         // uint16_t error_status = as5048a_get_error_status(&as5048a_handle);
         // ESP_LOGI(TAG, "%s error_status: %x", __func__, error_status);
-        vTaskDelay(50);
+        vTaskDelay(500);
     }
 }
 

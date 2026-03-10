@@ -33,7 +33,7 @@ static void send_data(const as5048a_handle_t *as5048a_handle, uint16_t address, 
 static uint16_t read_data(const as5048a_handle_t *as5048a_handle, uint16_t address);
 
 void spi_transmit(const as5048a_handle_t *as5048a_handle, uint16_t data);
-uint16_t spi_receive(const as5048a_handle_t *as5048a_handle);
+uint16_t spi_receive(const as5048a_handle_t *as5048a_handle, uint16_t frame);
 
 void as5048a_nop(const as5048a_handle_t *as5048a_handle);
 void delay(volatile uint16_t t);
@@ -51,19 +51,19 @@ uint8_t is_even_parity(uint16_t data);
  * @return Status code.
  *         0: Success.
  */
-int8_t as5048a_make_handle(as5048a_spi_send_t spi_send_func,
-                           as5048a_spi_read_t spi_read_func,
-                           as5048a_spi_deselect_t spi_select_func,
-                           as5048a_spi_deselect_t spi_deselect_func,
-                           as5048a_delay_t delay_func,
-                           as5048a_handle_t *as5048a_handle)
+as5048a_err_t as5048a_make_handle(as5048a_spi_send_t spi_send_func,
+                                  as5048a_spi_read_t spi_read_func,
+                                  as5048a_spi_deselect_t spi_select_func,
+                                  as5048a_spi_deselect_t spi_deselect_func,
+                                  as5048a_delay_t delay_func,
+                                  as5048a_handle_t *as5048a_handle)
 {
   as5048a_handle->spi_send = spi_send_func;
   as5048a_handle->spi_read = spi_read_func;
   as5048a_handle->spi_select = spi_select_func;
   as5048a_handle->spi_deselect = spi_deselect_func;
   as5048a_handle->delay = delay_func;
-  return 0; /* Success. */
+  return AS5018A_OK; /* Success. */
 }
 
 /**
@@ -83,32 +83,31 @@ uint16_t as5048a_get_error_status(const as5048a_handle_t *as5048a_handle)
  * @param as5048a_handle AS5048A handle.
  * @param position Current position raw value.
  * @return Status code.
- *         0: Success.
- *         -1: Error occurred.
+ *         AS5018A_OK: Success.
+ *         AS5018A_ERROR: Error occurred.
  */
-int8_t as5048a_get_position(const as5048a_handle_t *as5048a_handle,
-                            uint16_t *position)
+as5048a_err_t as5048a_get_position(const as5048a_handle_t *as5048a_handle,
+                                   uint16_t *position)
 {
   uint16_t data = read_data(as5048a_handle, AS5048A_ANGLE);
+  *position = data & 0x3FFF;
   if (BIT_READ(data, 14) == 0)
   {
-    *position = data & 0x3FFF;
-    return 0; /* No error occurred. */
+    return AS5018A_OK; /* No error occurred. */
   }
-  *position = data;
-  return -1; /* Error occurred. */
+  return AS5018A_ERROR; /* Error occurred. */
 }
 
-int8_t as5048a_get_diag(const as5048a_handle_t *as5048a_handle,
-                        uint16_t *diag)
+as5048a_err_t as5048a_get_diag(const as5048a_handle_t *as5048a_handle,
+                               uint16_t *diag)
 {
   uint16_t data = read_data(as5048a_handle, AS5048A_DIAAGC);
   if (BIT_READ(data, 14) == 0)
   {
     *diag = data;
-    return 0; /* No error occurred. */
+    return AS5018A_OK; /* No error occurred. */
   }
-  return -1; /* Error occurred. */
+  return AS5018A_ERROR; /* Error occurred. */
 }
 
 /**
@@ -117,14 +116,14 @@ int8_t as5048a_get_diag(const as5048a_handle_t *as5048a_handle,
  * @param as5048a_handle AS5048A handle
  * @param angle_degree Current angle in degree.
  * @return Status code.
- *         0: Success.
- *         -1: Error occurred.
+ *         AS5018A_OK: Success.
+ *         AS5018A_ERROR: Error occurred.
  */
-int8_t as5048a_get_angle(const as5048a_handle_t *as5048a_handle, float *angle_degree)
+as5048a_err_t as5048a_get_angle(const as5048a_handle_t *as5048a_handle, float *angle_degree)
 {
   uint16_t raw_position;
-  int8_t error = as5048a_get_position(as5048a_handle, &raw_position);
-  if (error == 0)
+  as5048a_err_t error = as5048a_get_position(as5048a_handle, &raw_position);
+  if (error == AS5018A_OK)
   {
     /* Angle in degree = value * ( 360 / 2^14). */
     *angle_degree = raw_position * (360.0 / 0x4000);
@@ -218,7 +217,7 @@ static void send_data(const as5048a_handle_t *as5048a_handle, uint16_t address, 
 static uint16_t read_data(const as5048a_handle_t *as5048a_handle, uint16_t address)
 {
   send_command(as5048a_handle, address, OP_READ);
-  return spi_receive(as5048a_handle);
+  return spi_receive(as5048a_handle, 0);
 }
 
 /**
@@ -229,10 +228,11 @@ static uint16_t read_data(const as5048a_handle_t *as5048a_handle, uint16_t addre
  */
 inline void spi_transmit(const as5048a_handle_t *as5048a_handle, uint16_t data)
 {
-  as5048a_handle->delay();
+  uint8_t buf[2] = {data >> 8, data & 0xFF};
 
+  as5048a_handle->delay();
   as5048a_handle->spi_select();
-  as5048a_handle->spi_send(data);
+  as5048a_handle->spi_send(buf, 2);
   as5048a_handle->spi_deselect();
 }
 
@@ -242,15 +242,15 @@ inline void spi_transmit(const as5048a_handle_t *as5048a_handle, uint16_t data)
  * @param as5048a_handle AS5048A handle.
  * @return Received data.
  */
-inline uint16_t spi_receive(const as5048a_handle_t *as5048a_handle)
+inline uint16_t spi_receive(const as5048a_handle_t *as5048a_handle, uint16_t frame)
 {
+  uint8_t rx_buf[2] = {0, 0};
+  uint8_t tx_buf[2] = {frame >> 8, frame & 0xFF};
   as5048a_handle->delay();
-
   as5048a_handle->spi_select();
-  uint16_t data = as5048a_handle->spi_read();
+  as5048a_handle->spi_read((void *)0, rx_buf, 2);
   as5048a_handle->spi_deselect();
-
-  return data;
+  return (rx_buf[0] << 8) + rx_buf[1];
 }
 
 /**

@@ -26,10 +26,16 @@ extern "C"
 
 #include <stdint.h>
 
-  typedef void (*as5048a_spi_send_t)(uint16_t data);
-  typedef uint16_t (*as5048a_spi_read_t)(void);
-  typedef void (*as5048a_spi_select_t)(void);
-  typedef void (*as5048a_spi_deselect_t)(void);
+  typedef enum
+  {
+    AS5018A_OK,
+    AS5018A_ERROR,
+  } as5048a_err_t;
+
+  typedef as5048a_err_t (*as5048a_spi_send_t)(uint8_t *data, uint32_t len);
+  typedef as5048a_err_t (*as5048a_spi_read_t)(uint8_t *tx_data, uint8_t *rx_data, uint32_t len);
+  typedef as5048a_err_t (*as5048a_spi_select_t)(void);
+  typedef as5048a_err_t (*as5048a_spi_deselect_t)(void);
 
   /**
    * @brief t_CSn: High time of CSn between two transmissions, Min: 350 ns.
@@ -45,22 +51,22 @@ extern "C"
     as5048a_delay_t delay;
   } as5048a_handle_t;
 
-  int8_t as5048a_make_handle(as5048a_spi_send_t spi_send_func,
-                             as5048a_spi_read_t spi_read_func,
-                             as5048a_spi_deselect_t spi_select_func,
-                             as5048a_spi_deselect_t spi_deselect_func,
-                             as5048a_delay_t delay_func,
-                             as5048a_handle_t *as5048a_handle);
+  as5048a_err_t as5048a_make_handle(as5048a_spi_send_t spi_send_func,
+                                    as5048a_spi_read_t spi_read_func,
+                                    as5048a_spi_select_t spi_select_func,
+                                    as5048a_spi_deselect_t spi_deselect_func,
+                                    as5048a_delay_t delay_func,
+                                    as5048a_handle_t *as5048a_handle);
 
   void as5048a_set_zero(const as5048a_handle_t *as5048a_handle, uint16_t position);
 
-  int8_t as5048a_get_position(const as5048a_handle_t *as5048a_handle, uint16_t *position);
+  as5048a_err_t as5048a_get_position(const as5048a_handle_t *as5048a_handle, uint16_t *position);
 
-  int8_t as5048a_get_angle(const as5048a_handle_t *as5048a_handle, float *angle_degree);
+  as5048a_err_t as5048a_get_angle(const as5048a_handle_t *as5048a_handle, float *angle_degree);
 
   uint16_t as5048a_get_error_status(const as5048a_handle_t *as5048a_handle);
 
-  int8_t as5048a_get_diag(const as5048a_handle_t *as5048a_handle, uint16_t *diag);
+  as5048a_err_t as5048a_get_diag(const as5048a_handle_t *as5048a_handle, uint16_t *diag);
 
 #ifdef __cplusplus
 }
